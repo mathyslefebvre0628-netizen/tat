@@ -32,7 +32,7 @@ public final class RestoreConfirmScreen extends Screen {
 
     private void restore() {
         try {
-            String prepared = AutoSaveService.restore(Minecraft.getInstance(), backupName);
+            AutoSaveService.restore(Minecraft.getInstance(), backupName);
             status = "Restauration terminée : " + prepared;
             this.minecraft.gui.setScreen(parent);
         } catch (Exception e) {
