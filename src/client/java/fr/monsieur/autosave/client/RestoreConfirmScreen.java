@@ -20,7 +20,6 @@ public final class RestoreConfirmScreen extends Screen {
             String backupName
     ) {
         super(Component.literal("Confirmer la restauration"));
-
         this.backupList = backupList;
         this.parent = parent;
         this.backupName = backupName;
@@ -34,7 +33,7 @@ public final class RestoreConfirmScreen extends Screen {
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Annuler"),
-                        button -> this.minecraft.setScreen(backupList)
+                        button -> this.minecraft.gui.setScreen(backupList)
                 ).bounds(
                         left,
                         top + 145,
@@ -65,7 +64,7 @@ public final class RestoreConfirmScreen extends Screen {
 
             status = "Restauration terminée.";
 
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
 
         } catch (Exception e) {
             status = "Échec : " + e.getMessage();
@@ -110,9 +109,7 @@ public final class RestoreConfirmScreen extends Screen {
 
         graphics.text(
                 this.font,
-                Component.literal(
-                        "RESTAURER CETTE SAUVEGARDE ?"
-                ),
+                Component.literal("RESTAURER CETTE SAUVEGARDE ?"),
                 left + 20,
                 top + 25,
                 0xFFFFFFFF,
