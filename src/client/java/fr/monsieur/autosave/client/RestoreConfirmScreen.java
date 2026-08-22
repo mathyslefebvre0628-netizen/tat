@@ -30,15 +30,15 @@ public final class RestoreConfirmScreen extends Screen {
                 .bounds(left + 220, top + 155, 200, 24).build());
     }
 
-    private void restore() {
-        try {
-            AutoSaveService.restore(Minecraft.getInstance(), backupName);
-            status = "Restauration terminée : " + prepared;
-            this.minecraft.gui.setScreen(parent);
-        } catch (Exception e) {
-            status = "Échec : " + e.getMessage();
-        }
+    pprivate void restore() {
+    try {
+        AutoSaveService.restore(Minecraft.getInstance(), backupName);
+        status = "Restauration terminée.";
+        this.minecraft.setScreen(parent);
+    } catch (Exception e) {
+        status = "Échec : " + e.getMessage();
     }
+}
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
