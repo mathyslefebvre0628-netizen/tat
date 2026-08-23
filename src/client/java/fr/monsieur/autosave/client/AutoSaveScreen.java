@@ -7,8 +7,8 @@ import net.minecraft.network.chat.Component;
 
 public final class AutoSaveScreen extends Screen {
 
-    private static final int PANEL_WIDTH = 560;
-    private static final int PANEL_HEIGHT = 340;
+    private static final int WIDTH = 620;
+    private static final int HEIGHT = 360;
 
     private final Screen parent;
 
@@ -22,53 +22,56 @@ public final class AutoSaveScreen extends Screen {
 
     @Override
     protected void init() {
-        int left = (this.width - PANEL_WIDTH) / 2;
-        int top = (this.height - PANEL_HEIGHT) / 2;
+        int left = (this.width - WIDTH) / 2;
+        int top = Math.max(15, (this.height - HEIGHT) / 2);
 
-        if (top < 20) {
-            top = 20;
-        }
-
+        // Auto Save
         toggleButton = Button.builder(
                 Component.literal(toggleText()),
                 button -> {
                     AutoSaveConfig.enabled = !AutoSaveConfig.enabled;
                     AutoSaveConfig.save();
                     button.setMessage(Component.literal(toggleText()));
+                    status = AutoSaveConfig.enabled
+                            ? "Sauvegarde automatique activée"
+                            : "Sauvegarde automatique désactivée";
                 }
         ).bounds(
-                left + 40,
-                top + 90,
-                480,
-                24
+                left + 420,
+                top + 78,
+                155,
+                28
         ).build();
 
         addRenderableWidget(toggleButton);
 
+        // Choisir un dossier
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Choisir un dossier"),
                         button -> AutoSaveService.chooseFolder(this)
                 ).bounds(
-                        left + 40,
-                        top + 140,
-                        230,
-                        24
+                        left + 35,
+                        top + 190,
+                        265,
+                        30
                 ).build()
         );
 
+        // Sauvegardes
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Utiliser une sauvegarde"),
                         button -> openBackupScreen()
                 ).bounds(
-                        left + 290,
-                        top + 140,
-                        230,
-                        24
+                        left + 320,
+                        top + 190,
+                        265,
+                        30
                 ).build()
         );
 
+        // Enregistrer
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Enregistrer"),
@@ -77,22 +80,23 @@ public final class AutoSaveScreen extends Screen {
                             status = "Configuration enregistrée";
                         }
                 ).bounds(
-                        left + 40,
-                        top + 275,
-                        230,
-                        24
+                        left + 35,
+                        top + 305,
+                        265,
+                        28
                 ).build()
         );
 
+        // Fermer
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Fermer"),
                         button -> onClose()
                 ).bounds(
-                        left + 290,
-                        top + 275,
-                        230,
-                        24
+                        left + 320,
+                        top + 305,
+                        265,
+                        28
                 ).build()
         );
     }
@@ -104,14 +108,15 @@ public final class AutoSaveScreen extends Screen {
     }
 
     private void openBackupScreen() {
-        this.minecraft.gui.setScreen(
+        this.minecraft.setScreen(
                 new BackupSelectScreen(this)
         );
     }
 
     private String toggleText() {
-        return "Auto Save : "
-                + (AutoSaveConfig.enabled ? "ON" : "OFF");
+        return AutoSaveConfig.enabled
+                ? "ACTIVÉ"
+                : "DÉSACTIVÉ";
     }
 
     @Override
@@ -119,7 +124,7 @@ public final class AutoSaveScreen extends Screen {
         AutoSaveConfig.save();
 
         if (this.minecraft != null) {
-            this.minecraft.gui.setScreen(parent);
+            this.minecraft.setScreen(parent);
         }
     }
 
@@ -137,14 +142,10 @@ public final class AutoSaveScreen extends Screen {
                 delta
         );
 
-        int left = (this.width - PANEL_WIDTH) / 2;
-        int top = (this.height - PANEL_HEIGHT) / 2;
+        int left = (this.width - WIDTH) / 2;
+        int top = Math.max(15, (this.height - HEIGHT) / 2);
 
-        if (top < 20) {
-            top = 20;
-        }
-
-        // Fond général noir
+        // Fond
         graphics.fill(
                 0,
                 0,
@@ -155,19 +156,19 @@ public final class AutoSaveScreen extends Screen {
 
         // Ombre
         graphics.fill(
-                left + 6,
-                top + 6,
-                left + PANEL_WIDTH + 6,
-                top + PANEL_HEIGHT + 6,
+                left + 7,
+                top + 7,
+                left + WIDTH + 7,
+                top + HEIGHT + 7,
                 0x70000000
         );
 
-        // Panneau principal
+        // Cadre
         graphics.fill(
                 left,
                 top,
-                left + PANEL_WIDTH,
-                top + PANEL_HEIGHT,
+                left + WIDTH,
+                top + HEIGHT,
                 0xFF111111
         );
 
@@ -175,9 +176,18 @@ public final class AutoSaveScreen extends Screen {
         graphics.fill(
                 left,
                 top,
-                left + PANEL_WIDTH,
-                top + 58,
-                0xFF171717
+                left + WIDTH,
+                top + 64,
+                0xFF181818
+        );
+
+        // Ligne de séparation
+        graphics.fill(
+                left,
+                top + 63,
+                left + WIDTH,
+                top + 64,
+                0xFF292929
         );
 
         // Titre
@@ -190,55 +200,76 @@ public final class AutoSaveScreen extends Screen {
                 true
         );
 
-        // Sous-titre
         graphics.text(
                 this.font,
                 Component.literal(
                         "Sauvegarde automatique de votre monde"
                 ),
                 left + 30,
-                top + 39,
-                0xFFAAAAAA,
+                top + 40,
+                0xFF8F8F8F,
                 false
         );
 
-        // Dossier
+        // Section Auto Save
+        graphics.text(
+                this.font,
+                Component.literal("Sauvegarde automatique"),
+                left + 35,
+                top + 83,
+                0xFFFFFFFF,
+                false
+        );
+
+        graphics.text(
+                this.font,
+                Component.literal(
+                        "Créer automatiquement une copie de votre monde"
+                ),
+                left + 35,
+                top + 101,
+                0xFF888888,
+                false
+        );
+
+        // Section dossier
+        graphics.text(
+                this.font,
+                Component.literal("Dossier de sauvegarde"),
+                left + 35,
+                top + 150,
+                0xFFFFFFFF,
+                false
+        );
+
         String folderText;
 
         if (AutoSaveConfig.folder == null
                 || AutoSaveConfig.folder.isBlank()) {
-
-            folderText = "Dossier : non configuré";
-
+            folderText = "Aucun dossier sélectionné";
         } else {
-
-            folderText =
-                    "Dossier : " + AutoSaveConfig.folder;
+            folderText = AutoSaveConfig.folder;
         }
 
         if (folderText.length() > 75) {
-            folderText =
-                    folderText.substring(0, 72) + "...";
+            folderText = folderText.substring(0, 72) + "...";
         }
+
+        // Zone du chemin
+        graphics.fill(
+                left + 35,
+                top + 160,
+                left + 585,
+                top + 178,
+                0xFF0B0B0B
+        );
 
         graphics.text(
                 this.font,
                 Component.literal(folderText),
-                left + 40,
-                top + 205,
-                0xFFCCCCCC,
-                false
-        );
-
-        // Intervalle
-        graphics.text(
-                this.font,
-                Component.literal(
-                        "Intervalle : 5 minutes"
-                ),
-                left + 40,
-                top + 225,
-                0xFF888888,
+                left + 43,
+                top + 165,
+                0xFFBDBDBD,
                 false
         );
 
@@ -246,9 +277,19 @@ public final class AutoSaveScreen extends Screen {
         graphics.text(
                 this.font,
                 Component.literal(status),
-                left + 40,
-                top + 250,
-                0xFFAAAAAA,
+                left + 35,
+                top + 270,
+                0xFF888888,
+                false
+        );
+
+        // Intervalle
+        graphics.text(
+                this.font,
+                Component.literal("Intervalle automatique : 5 minutes"),
+                left + 35,
+                top + 285,
+                0xFF666666,
                 false
         );
     }
