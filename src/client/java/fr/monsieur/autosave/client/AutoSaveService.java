@@ -4,10 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -24,12 +21,6 @@ final class AutoSaveService {
     private AutoSaveService() {
     }
 
-    /**
-     * Ouvre le sélecteur de dossier Windows natif.
-     *
-     * Le dialogue est lancé dans un thread séparé pour ne pas bloquer
-     * le thread principal de Minecraft.
-     */
     static void chooseFolder(AutoSaveScreen screen) {
         CompletableFuture
                 .supplyAsync(AutoSaveService::openWindowsFolderPicker)
@@ -38,9 +29,7 @@ final class AutoSaveService {
                         return;
                     }
 
-                    Minecraft minecraft = Minecraft.getInstance();
-
-                    minecraft.execute(() ->
+                    Minecraft.getInstance().execute(() ->
                             screen.updateFolder(
                                     Path.of(path)
                                             .toAbsolutePath()
@@ -51,30 +40,21 @@ final class AutoSaveService {
                 });
     }
 
-    /**
-     * Lance le sélecteur de dossiers Windows avec PowerShell.
-     */
     private static String openWindowsFolderPicker() {
         String script = """
                 Add-Type -AssemblyName System.Windows.Forms
-                Add-Type -AssemblyName System.Drawing
-
                 $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
                 $dialog.Description = 'Choisir le dossier des sauvegardes'
                 $dialog.UseDescriptionForTitle = $true
                 $dialog.ShowNewFolderButton = $true
-
                 $result = $dialog.ShowDialog()
-
                 if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
                     [Console]::WriteLine($dialog.SelectedPath)
                 }
                 """;
 
-        Process process = null;
-
         try {
-            process = new ProcessBuilder(
+            Process process = new ProcessBuilder(
                     "powershell.exe",
                     "-NoProfile",
                     "-NonInteractive",
@@ -83,96 +63,106 @@ final class AutoSaveService {
                     "Bypass",
                     "-Command",
                     script
-            )
-                    .redirectErrorStream(true)
-                    .start();
+            ).redirectErrorStream(true).start();
 
-            StringBuilder output = new StringBuilder();
-
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(
-                            process.getInputStream(),
-                            StandardCharsets.UTF_8
-                    )
-            )) {
-                String line;
-
-                while ((line = reader.readLine()) != null) {
-                    if (!line.isBlank()) {
-                        output.append(line.trim());
-                    }
-                }
-            }
+            String output =
+                    new String(
+                            process.getInputStream().readAllBytes(),
+                            java.nio.charset.StandardCharsets.UTF_8
+                    ).trim();
 
             int exitCode = process.waitFor();
 
-            if (exitCode != 0) {
+            if (exitCode != 0 || output.isBlank()) {
                 return null;
             }
 
-            String result = output.toString().trim();
-
-            return result.isBlank() ? null : result;
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return null;
+            return output;
 
         } catch (Exception e) {
+            System.err.println(
+                    "[AutoSave] Erreur sélecteur de dossier : "
+                            + e.getMessage()
+            );
             return null;
-
-        } finally {
-            if (process != null && process.isAlive()) {
-                process.destroyForcibly();
-            }
         }
     }
 
-    /**
-     * Crée une sauvegarde automatique.
-     */
     static void createBackup(Minecraft client) {
         MinecraftServer server = client.getSingleplayerServer();
 
-        if (server == null
-                || AutoSaveConfig.folder == null
+        if (server == null) {
+            System.err.println(
+                    "[AutoSave] Aucun monde solo ouvert."
+            );
+            return;
+        }
+
+        if (AutoSaveConfig.folder == null
                 || AutoSaveConfig.folder.isBlank()) {
+            System.err.println(
+                    "[AutoSave] Aucun dossier de sauvegarde configuré."
+            );
             return;
         }
 
         server.execute(() -> {
             try {
-                if (!server.saveEverything(false, true, true)) {
-                    return;
+                boolean saved =
+                        server.saveEverything(false, true, true);
+
+                if (!saved) {
+                    throw new IOException(
+                            "Minecraft n'a pas réussi à sauvegarder le monde."
+                    );
                 }
 
-                Path world = server
-                        .getWorldPath(LevelResource.ROOT)
-                        .toAbsolutePath()
-                        .normalize();
+                Path world =
+                        server.getWorldPath(LevelResource.ROOT)
+                                .toAbsolutePath()
+                                .normalize();
 
-                Path root = Path
-                        .of(AutoSaveConfig.folder)
-                        .toAbsolutePath()
-                        .normalize();
+                if (!Files.isDirectory(world)) {
+                    throw new IOException(
+                            "Dossier du monde introuvable : " + world
+                    );
+                }
+
+                Path root =
+                        Path.of(AutoSaveConfig.folder)
+                                .toAbsolutePath()
+                                .normalize();
 
                 Files.createDirectories(root);
 
-                Path target = root.resolve(
-                        "autosave_" + STAMP.format(LocalDateTime.now())
+                Path target =
+                        root.resolve(
+                                "autosave_"
+                                        + STAMP.format(
+                                        LocalDateTime.now()
+                                )
+                        );
+
+                System.out.println(
+                        "[AutoSave] Création : " + target
                 );
 
                 copyDirectory(world, target);
 
-            } catch (Exception ignored) {
-                // Une erreur de sauvegarde ne doit pas faire planter Minecraft.
+                System.out.println(
+                        "[AutoSave] Sauvegarde créée : "
+                                + target
+                );
+
+            } catch (Exception e) {
+                System.err.println(
+                        "[AutoSave] ÉCHEC DE LA SAUVEGARDE"
+                );
+                e.printStackTrace();
             }
         });
     }
 
-    /**
-     * Retourne toutes les sauvegardes disponibles.
-     */
     static String[] listBackups() {
         if (AutoSaveConfig.folder == null
                 || AutoSaveConfig.folder.isBlank()) {
@@ -182,8 +172,7 @@ final class AutoSaveService {
         Path root;
 
         try {
-            root = Path
-                    .of(AutoSaveConfig.folder)
+            root = Path.of(AutoSaveConfig.folder)
                     .toAbsolutePath()
                     .normalize();
         } catch (Exception e) {
@@ -197,7 +186,9 @@ final class AutoSaveService {
         try (var stream = Files.list(root)) {
             return stream
                     .filter(Files::isDirectory)
-                    .map(path -> path.getFileName().toString())
+                    .map(path ->
+                            path.getFileName().toString()
+                    )
                     .filter(name ->
                             name.startsWith("autosave_")
                                     || name.startsWith(
@@ -208,16 +199,15 @@ final class AutoSaveService {
                     .toArray(String[]::new);
 
         } catch (IOException e) {
+            System.err.println(
+                    "[AutoSave] Impossible de lire les sauvegardes : "
+                            + e.getMessage()
+            );
+
             return new String[0];
         }
     }
 
-    /**
-     * Restaure une sauvegarde.
-     *
-     * Une copie de sécurité du monde actuel est créée avant
-     * de remplacer son contenu.
-     */
     static void restore(
             Minecraft client,
             String backupName
@@ -235,62 +225,51 @@ final class AutoSaveService {
         if (AutoSaveConfig.folder == null
                 || AutoSaveConfig.folder.isBlank()) {
             throw new IOException(
-                    "Aucun dossier de sauvegarde n'est configuré."
+                    "Aucun dossier de sauvegarde configuré."
             );
         }
 
-        Path configuredRoot = Path
-                .of(AutoSaveConfig.folder)
-                .toAbsolutePath()
-                .normalize();
+        Path root =
+                Path.of(AutoSaveConfig.folder)
+                        .toAbsolutePath()
+                        .normalize();
 
-        Path backup = configuredRoot
-                .resolve(backupName)
-                .toAbsolutePath()
-                .normalize();
+        Path backup =
+                root.resolve(backupName)
+                        .toAbsolutePath()
+                        .normalize();
 
-        if (!backup.startsWith(configuredRoot)
+        if (!backup.startsWith(root)
                 || !Files.isDirectory(backup)) {
             throw new IOException(
                     "Sauvegarde invalide."
             );
         }
 
-        /*
-         * Sauvegarde du monde avant restauration.
-         */
         if (!server.saveEverything(false, true, true)) {
             throw new IOException(
                     "Impossible de sauvegarder le monde actuel."
             );
         }
 
-        Path world = server
-                .getWorldPath(LevelResource.ROOT)
-                .toAbsolutePath()
-                .normalize();
+        Path world =
+                server.getWorldPath(LevelResource.ROOT)
+                        .toAbsolutePath()
+                        .normalize();
 
-        /*
-         * Sauvegarde de sécurité.
-         */
-        Path safety = configuredRoot.resolve(
-                "backup_before_restore_"
-                        + STAMP.format(LocalDateTime.now())
-        );
+        Path safety =
+                root.resolve(
+                        "backup_before_restore_"
+                                + STAMP.format(
+                                LocalDateTime.now()
+                        )
+                );
 
         copyDirectory(world, safety);
-
-        /*
-         * Remplacement du monde.
-         */
         deleteDirectory(world);
-
         copyDirectory(backup, world);
     }
 
-    /**
-     * Copie récursive d'un dossier.
-     */
     private static void copyDirectory(
             Path source,
             Path target
@@ -305,7 +284,6 @@ final class AutoSaveService {
         Files.createDirectories(target);
 
         try (var stream = Files.walk(source)) {
-
             stream.forEach(path -> {
                 try {
                     Path relative =
@@ -316,7 +294,6 @@ final class AutoSaveService {
 
                     if (Files.isDirectory(path)) {
                         Files.createDirectories(destination);
-
                     } else {
                         Files.copy(
                                 path,
@@ -333,9 +310,6 @@ final class AutoSaveService {
         }
     }
 
-    /**
-     * Supprime récursivement un dossier.
-     */
     private static void deleteDirectory(
             Path root
     ) throws IOException {
@@ -345,7 +319,6 @@ final class AutoSaveService {
         }
 
         try (var stream = Files.walk(root)) {
-
             stream.sorted(Comparator.reverseOrder())
                     .forEach(path -> {
                         try {
@@ -354,11 +327,6 @@ final class AutoSaveService {
                             throw new RuntimeException(e);
                         }
                     });
-        }
-    }
-
-    private static final class StringBuilderHolder {
-        private StringBuilderHolder() {
         }
     }
 }
