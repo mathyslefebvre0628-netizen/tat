@@ -6,7 +6,13 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 public final class AutoSaveScreen extends Screen {
+
+    private static final int PANEL_WIDTH = 560;
+    private static final int PANEL_HEIGHT = 340;
+
     private final Screen parent;
+
+    private Button toggleButton;
     private String status = "Prêt";
 
     public AutoSaveScreen(Screen parent) {
@@ -16,30 +22,79 @@ public final class AutoSaveScreen extends Screen {
 
     @Override
     protected void init() {
-        int panelWidth = 420;
-        int left = (this.width - panelWidth) / 2;
-        int top = Math.max(25, (this.height - 300) / 2);
+        int left = (this.width - PANEL_WIDTH) / 2;
+        int top = (this.height - PANEL_HEIGHT) / 2;
 
-        addRenderableWidget(Button.builder(Component.literal(toggleText()), button -> {
-            AutoSaveConfig.enabled = !AutoSaveConfig.enabled;
-            AutoSaveConfig.save();
-            button.setMessage(Component.literal(toggleText()));
-        }).bounds(left + 40, top + 70, 340, 24).build());
+        if (top < 20) {
+            top = 20;
+        }
 
-        addRenderableWidget(Button.builder(Component.literal("Choisir un dossier"), button -> AutoSaveService.chooseFolder(this))
-                .bounds(left + 40, top + 110, 165, 24).build());
+        toggleButton = Button.builder(
+                Component.literal(toggleText()),
+                button -> {
+                    AutoSaveConfig.enabled = !AutoSaveConfig.enabled;
+                    AutoSaveConfig.save();
+                    button.setMessage(Component.literal(toggleText()));
+                }
+        ).bounds(
+                left + 40,
+                top + 90,
+                480,
+                24
+        ).build();
 
-        addRenderableWidget(Button.builder(Component.literal("Utiliser une sauvegarde"), button ->
-                this.minecraft.gui.setScreen(new BackupSelectScreen(this)))
-                .bounds(left + 215, top + 110, 165, 24).build());
+        addRenderableWidget(toggleButton);
 
-        addRenderableWidget(Button.builder(Component.literal("Enregistrer"), button -> {
-            AutoSaveConfig.save();
-            status = "Configuration enregistrée";
-        }).bounds(left + 40, top + 230, 165, 24).build());
+        addRenderableWidget(
+                Button.builder(
+                        Component.literal("Choisir un dossier"),
+                        button -> AutoSaveService.chooseFolder(this)
+                ).bounds(
+                        left + 40,
+                        top + 140,
+                        230,
+                        24
+                ).build()
+        );
 
-        addRenderableWidget(Button.builder(Component.literal("Fermer"), button -> onClose())
-                .bounds(left + 215, top + 230, 165, 24).build());
+        addRenderableWidget(
+                Button.builder(
+                        Component.literal("Utiliser une sauvegarde"),
+                        button -> openBackupScreen()
+                ).bounds(
+                        left + 290,
+                        top + 140,
+                        230,
+                        24
+                ).build()
+        );
+
+        addRenderableWidget(
+                Button.builder(
+                        Component.literal("Enregistrer"),
+                        button -> {
+                            AutoSaveConfig.save();
+                            status = "Configuration enregistrée";
+                        }
+                ).bounds(
+                        left + 40,
+                        top + 275,
+                        230,
+                        24
+                ).build()
+        );
+
+        addRenderableWidget(
+                Button.builder(
+                        Component.literal("Fermer"),
+                        button -> onClose()
+                ).bounds(
+                        left + 290,
+                        top + 275,
+                        230,
+                        24
+                ).build()
+        );
     }
 
     void updateFolder(String path) {
@@ -48,34 +103,153 @@ public final class AutoSaveScreen extends Screen {
         status = "Dossier sélectionné";
     }
 
+    private void openBackupScreen() {
+        this.minecraft.gui.setScreen(
+                new BackupSelectScreen(this)
+        );
+    }
+
     private String toggleText() {
-        return "Auto Save : " + (AutoSaveConfig.enabled ? "ON" : "OFF");
+        return "Auto Save : "
+                + (AutoSaveConfig.enabled ? "ON" : "OFF");
     }
 
     @Override
     public void onClose() {
         AutoSaveConfig.save();
-        this.minecraft.gui.setScreen(parent);
+
+        if (this.minecraft != null) {
+            this.minecraft.gui.setScreen(parent);
+        }
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        super.extractRenderState(graphics, mouseX, mouseY, delta);
+    public void extractRenderState(
+            GuiGraphicsExtractor graphics,
+            int mouseX,
+            int mouseY,
+            float delta
+    ) {
+        super.extractRenderState(
+                graphics,
+                mouseX,
+                mouseY,
+                delta
+        );
 
-        graphics.fill(0, 0, this.width, this.height, 0xFF050505);
-        int panelWidth = 420;
-        int panelHeight = 300;
-        int left = (this.width - panelWidth) / 2;
-        int top = Math.max(25, (this.height - panelHeight) / 2);
+        int left = (this.width - PANEL_WIDTH) / 2;
+        int top = (this.height - PANEL_HEIGHT) / 2;
 
-        graphics.fill(left, top, left + panelWidth, top + panelHeight, 0xFF101010);
-        graphics.text(this.font, Component.literal("AUTO SAVE"), left + 40, top + 24, 0xFFFFFFFF, false);
-        graphics.text(this.font, Component.literal("Sauvegardes automatiques du monde"), left + 40, top + 45, 0xFFAAAAAA, false);
+        if (top < 20) {
+            top = 20;
+        }
 
-        String folderText = AutoSaveConfig.folder.isBlank() ? "Dossier : non configuré" : "Dossier : " + AutoSaveConfig.folder;
-        if (folderText.length() > 52) folderText = folderText.substring(0, 49) + "...";
-        graphics.text(this.font, folderText, left + 40, top + 155, 0xFFCCCCCC, false);
-        graphics.text(this.font, "Intervalle : 5 minutes", left + 40, top + 175, 0xFF888888, false);
-        graphics.text(this.font, status, left + 40, top + 205, 0xFFAAAAAA, false);
+        // Fond général noir
+        graphics.fill(
+                0,
+                0,
+                this.width,
+                this.height,
+                0xFF050505
+        );
+
+        // Ombre
+        graphics.fill(
+                left + 6,
+                top + 6,
+                left + PANEL_WIDTH + 6,
+                top + PANEL_HEIGHT + 6,
+                0x70000000
+        );
+
+        // Panneau principal
+        graphics.fill(
+                left,
+                top,
+                left + PANEL_WIDTH,
+                top + PANEL_HEIGHT,
+                0xFF111111
+        );
+
+        // Barre supérieure
+        graphics.fill(
+                left,
+                top,
+                left + PANEL_WIDTH,
+                top + 58,
+                0xFF171717
+        );
+
+        // Titre
+        graphics.text(
+                this.font,
+                Component.literal("AUTO SAVE"),
+                left + 30,
+                top + 20,
+                0xFFFFFFFF,
+                true
+        );
+
+        // Sous-titre
+        graphics.text(
+                this.font,
+                Component.literal(
+                        "Sauvegarde automatique de votre monde"
+                ),
+                left + 30,
+                top + 39,
+                0xFFAAAAAA,
+                false
+        );
+
+        // Dossier
+        String folderText;
+
+        if (AutoSaveConfig.folder == null
+                || AutoSaveConfig.folder.isBlank()) {
+
+            folderText = "Dossier : non configuré";
+
+        } else {
+
+            folderText =
+                    "Dossier : " + AutoSaveConfig.folder;
+        }
+
+        if (folderText.length() > 75) {
+            folderText =
+                    folderText.substring(0, 72) + "...";
+        }
+
+        graphics.text(
+                this.font,
+                Component.literal(folderText),
+                left + 40,
+                top + 205,
+                0xFFCCCCCC,
+                false
+        );
+
+        // Intervalle
+        graphics.text(
+                this.font,
+                Component.literal(
+                        "Intervalle : 5 minutes"
+                ),
+                left + 40,
+                top + 225,
+                0xFF888888,
+                false
+        );
+
+        // Statut
+        graphics.text(
+                this.font,
+                Component.literal(status),
+                left + 40,
+                top + 250,
+                0xFFAAAAAA,
+                false
+        );
     }
 }
