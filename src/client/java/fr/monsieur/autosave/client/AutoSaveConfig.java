@@ -10,8 +10,11 @@ import java.nio.file.Path;
 final class AutoSaveConfig {
 
     static boolean enabled = true;
+
     static String folder = "";
-    static int intervalTicks = 6000; // 5 minutes
+
+    // 5 minutes par défaut.
+    static int intervalTicks = 20 * 60 * 5;
 
     private AutoSaveConfig() {
     }
@@ -42,11 +45,13 @@ final class AutoSaveConfig {
                     continue;
                 }
 
-                String key =
-                        line.substring(0, separator).trim();
+                String key = line
+                        .substring(0, separator)
+                        .trim();
 
-                String value =
-                        line.substring(separator + 1).trim();
+                String value = line
+                        .substring(separator + 1)
+                        .trim();
 
                 switch (key) {
                     case "enabled" ->
@@ -56,18 +61,22 @@ final class AutoSaveConfig {
                     case "folder" ->
                             folder = value;
 
-                    case "intervalTicks" ->
-                            intervalTicks =
-                                    Math.max(
-                                            20,
-                                            Integer.parseInt(value)
-                                    );
+                    case "intervalTicks" -> {
+                        try {
+                            intervalTicks = Math.max(
+                                    20,
+                                    Integer.parseInt(value)
+                            );
+                        } catch (NumberFormatException ignored) {
+                            intervalTicks = 20 * 60 * 5;
+                        }
+                    }
                 }
             }
 
         } catch (Exception e) {
             System.err.println(
-                    "[AutoSave] Erreur de lecture de la configuration :"
+                    "[AutoSave] Impossible de lire la configuration."
             );
             e.printStackTrace();
         }
@@ -81,14 +90,22 @@ final class AutoSaveConfig {
                     config.getParent()
             );
 
+            String safeFolder =
+                    folder == null
+                            ? ""
+                            : folder
+                                    .replace("\r", "")
+                                    .replace("\n", "");
+
             String content =
                     "enabled=" + enabled + "\n"
-                    + "folder="
-                    + clean(folder)
-                    + "\n"
-                    + "intervalTicks="
-                    + Math.max(20, intervalTicks)
-                    + "\n";
+                            + "folder=" + safeFolder + "\n"
+                            + "intervalTicks="
+                            + Math.max(
+                                    20,
+                                    intervalTicks
+                            )
+                            + "\n";
 
             Files.writeString(
                     config,
@@ -97,26 +114,14 @@ final class AutoSaveConfig {
             );
 
             System.out.println(
-                    "[AutoSave] Configuration sauvegardée : "
-                            + config
+                    "[AutoSave] Configuration sauvegardée."
             );
 
         } catch (IOException e) {
             System.err.println(
-                    "[AutoSave] IMPOSSIBLE D'ÉCRIRE LA CONFIGURATION : "
-                            + config
+                    "[AutoSave] Impossible d'écrire la configuration."
             );
             e.printStackTrace();
         }
-    }
-
-    private static String clean(String value) {
-        if (value == null) {
-            return "";
-        }
-
-        return value
-                .replace("\r", "")
-                .replace("\n", "");
     }
 }
