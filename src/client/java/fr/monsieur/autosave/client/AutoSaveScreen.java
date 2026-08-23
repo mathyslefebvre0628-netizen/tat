@@ -7,8 +7,12 @@ import net.minecraft.network.chat.Component;
 
 public final class AutoSaveScreen extends Screen {
 
-    private static final int WIDTH = 620;
-    private static final int HEIGHT = 360;
+    /*
+     * Design de référence pour un écran 1920x1080.
+     * Les dimensions sont ensuite limitées à la taille réelle du GUI Minecraft.
+     */
+    private static final int PANEL_WIDTH = 760;
+    private static final int PANEL_HEIGHT = 430;
 
     private final Screen parent;
 
@@ -22,9 +26,15 @@ public final class AutoSaveScreen extends Screen {
 
     @Override
     protected void init() {
-        int left = (this.width - WIDTH) / 2;
-        int top = Math.max(15, (this.height - HEIGHT) / 2);
+        int panelWidth = getPanelWidth();
+        int panelHeight = getPanelHeight();
 
+        int left = (this.width - panelWidth) / 2;
+        int top = (this.height - panelHeight) / 2;
+
+        /*
+         * Interrupteur ON/OFF
+         */
         toggleButton = Button.builder(
                 Component.literal(toggleText()),
                 button -> {
@@ -40,38 +50,47 @@ public final class AutoSaveScreen extends Screen {
                             : "Sauvegarde automatique désactivée";
                 }
         ).bounds(
-                left + 420,
-                top + 78,
-                155,
-                28
+                left + panelWidth - 190,
+                top + 94,
+                150,
+                30
         ).build();
 
         addRenderableWidget(toggleButton);
 
+        /*
+         * Choisir le dossier
+         */
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Choisir un dossier"),
                         button -> AutoSaveService.chooseFolder(this)
                 ).bounds(
-                        left + 35,
-                        top + 190,
-                        265,
-                        30
+                        left + 45,
+                        top + 210,
+                        (panelWidth - 125) / 2,
+                        34
                 ).build()
         );
 
+        /*
+         * Restaurer
+         */
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Utiliser une sauvegarde"),
                         button -> openBackupScreen()
                 ).bounds(
-                        left + 320,
-                        top + 190,
-                        265,
-                        30
+                        left + 80 + (panelWidth - 125) / 2,
+                        top + 210,
+                        (panelWidth - 125) / 2,
+                        34
                 ).build()
         );
 
+        /*
+         * Enregistrer
+         */
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Enregistrer"),
@@ -80,23 +99,40 @@ public final class AutoSaveScreen extends Screen {
                             status = "Configuration enregistrée";
                         }
                 ).bounds(
-                        left + 35,
-                        top + 305,
-                        265,
-                        28
+                        left + 45,
+                        top + panelHeight - 66,
+                        (panelWidth - 125) / 2,
+                        32
                 ).build()
         );
 
+        /*
+         * Fermer
+         */
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Fermer"),
                         button -> onClose()
                 ).bounds(
-                        left + 320,
-                        top + 305,
-                        265,
-                        28
+                        left + 80 + (panelWidth - 125) / 2,
+                        top + panelHeight - 66,
+                        (panelWidth - 125) / 2,
+                        32
                 ).build()
+        );
+    }
+
+    private int getPanelWidth() {
+        return Math.min(
+                PANEL_WIDTH,
+                Math.max(520, this.width - 60)
+        );
+    }
+
+    private int getPanelHeight() {
+        return Math.min(
+                PANEL_HEIGHT,
+                Math.max(340, this.height - 40)
         );
     }
 
@@ -107,9 +143,11 @@ public final class AutoSaveScreen extends Screen {
     }
 
     private void openBackupScreen() {
-        this.minecraft.gui.setScreen(
-                new BackupSelectScreen(this)
-        );
+        if (this.minecraft != null) {
+            this.minecraft.gui.setScreen(
+                    new BackupSelectScreen(this)
+            );
+        }
     }
 
     private String toggleText() {
@@ -141,62 +179,101 @@ public final class AutoSaveScreen extends Screen {
                 delta
         );
 
-        int left = (this.width - WIDTH) / 2;
-        int top = Math.max(
-                15,
-                (this.height - HEIGHT) / 2
-        );
+        int panelWidth = getPanelWidth();
+        int panelHeight = getPanelHeight();
 
-        // Fond général
+        int left = (this.width - panelWidth) / 2;
+        int top = (this.height - panelHeight) / 2;
+
+        /*
+         * Fond général
+         */
         graphics.fill(
                 0,
                 0,
                 this.width,
                 this.height,
-                0xFF050505
+                0xFF070707
         );
 
-        // Ombre
+        /*
+         * Grande ombre derrière le panneau
+         */
         graphics.fill(
-                left + 7,
-                top + 7,
-                left + WIDTH + 7,
-                top + HEIGHT + 7,
-                0x70000000
+                left + 8,
+                top + 8,
+                left + panelWidth + 8,
+                top + panelHeight + 8,
+                0x65000000
         );
 
-        // Panneau
+        /*
+         * Panneau principal
+         */
         graphics.fill(
                 left,
                 top,
-                left + WIDTH,
-                top + HEIGHT,
+                left + panelWidth,
+                top + panelHeight,
                 0xFF111111
         );
 
-        // En-tête
+        /*
+         * En-tête
+         */
         graphics.fill(
                 left,
                 top,
-                left + WIDTH,
-                top + 64,
+                left + panelWidth,
+                top + 72,
                 0xFF181818
         );
 
+        /*
+         * Ligne de séparation
+         */
         graphics.fill(
                 left,
-                top + 63,
-                left + WIDTH,
-                top + 64,
-                0xFF292929
+                top + 71,
+                left + panelWidth,
+                top + 72,
+                0xFF2B2B2B
         );
 
-        // Titre
+        /*
+         * Titre
+         */
         graphics.text(
                 this.font,
                 Component.literal("AUTO SAVE"),
-                left + 30,
-                top + 20,
+                left + 35,
+                top + 22,
+                0xFFFFFFFF,
+                true
+        );
+
+        /*
+         * Sous-titre
+         */
+        graphics.text(
+                this.font,
+                Component.literal(
+                        "Sauvegarde automatique de votre monde"
+                ),
+                left + 35,
+                top + 43,
+                0xFF8C8C8C,
+                false
+        );
+
+        /*
+         * Section AUTO SAVE
+         */
+        graphics.text(
+                this.font,
+                Component.literal("Sauvegarde automatique"),
+                left + 45,
+                top + 100,
                 0xFFFFFFFF,
                 true
         );
@@ -204,97 +281,114 @@ public final class AutoSaveScreen extends Screen {
         graphics.text(
                 this.font,
                 Component.literal(
-                        "Sauvegarde automatique de votre monde"
+                        "Active ou désactive la création automatique des sauvegardes."
                 ),
-                left + 30,
-                top + 40,
-                0xFF8F8F8F,
+                left + 45,
+                top + 122,
+                0xFF858585,
                 false
         );
 
-        // Section Auto Save
-        graphics.text(
-                this.font,
-                Component.literal("Sauvegarde automatique"),
-                left + 35,
-                top + 83,
-                0xFFFFFFFF,
-                false
+        /*
+         * Séparateur de section
+         */
+        graphics.fill(
+                left + 45,
+                top + 145,
+                left + panelWidth - 45,
+                top + 146,
+                0xFF252525
         );
 
-        graphics.text(
-                this.font,
-                Component.literal(
-                        "Créer automatiquement une copie de votre monde"
-                ),
-                left + 35,
-                top + 101,
-                0xFF888888,
-                false
-        );
-
-        // Section dossier
+        /*
+         * Section dossier
+         */
         graphics.text(
                 this.font,
                 Component.literal("Dossier de sauvegarde"),
-                left + 35,
-                top + 150,
+                left + 45,
+                top + 168,
                 0xFFFFFFFF,
-                false
+                true
         );
 
-        String folderText;
+        String folderText = getFolderText();
 
-        if (AutoSaveConfig.folder == null
-                || AutoSaveConfig.folder.isBlank()) {
-            folderText = "Aucun dossier sélectionné";
-        } else {
-            folderText = AutoSaveConfig.folder;
-        }
-
-        if (folderText.length() > 75) {
-            folderText =
-                    folderText.substring(0, 72) + "...";
-        }
-
-        // Zone du chemin
+        /*
+         * Zone du chemin
+         */
         graphics.fill(
-                left + 35,
-                top + 160,
-                left + 585,
-                top + 178,
-                0xFF0B0B0B
+                left + 45,
+                top + 180,
+                left + panelWidth - 45,
+                top + 201,
+                0xFF090909
+        );
+
+        graphics.fill(
+                left + 45,
+                top + 200,
+                left + panelWidth - 45,
+                top + 201,
+                0xFF252525
         );
 
         graphics.text(
                 this.font,
                 Component.literal(folderText),
-                left + 43,
-                top + 165,
+                left + 55,
+                top + 187,
                 0xFFBDBDBD,
                 false
         );
 
-        // Statut
+        /*
+         * Statut
+         */
         graphics.text(
                 this.font,
                 Component.literal(status),
-                left + 35,
-                top + 270,
+                left + 45,
+                top + panelHeight - 106,
                 0xFF888888,
                 false
         );
 
-        // Intervalle
+        /*
+         * Intervalle
+         */
         graphics.text(
                 this.font,
                 Component.literal(
                         "Intervalle automatique : 5 minutes"
                 ),
-                left + 35,
-                top + 285,
+                left + 45,
+                top + panelHeight - 88,
                 0xFF666666,
                 false
+        );
+    }
+
+    private String getFolderText() {
+        if (AutoSaveConfig.folder == null
+                || AutoSaveConfig.folder.isBlank()) {
+            return "Aucun dossier sélectionné";
+        }
+
+        String folder = AutoSaveConfig.folder;
+
+        /*
+         * On raccourcit uniquement l'affichage.
+         * Le vrai chemin reste intégralement enregistré.
+         */
+        int maxLength = 86;
+
+        if (folder.length() <= maxLength) {
+            return folder;
+        }
+
+        return "..." + folder.substring(
+                folder.length() - (maxLength - 3)
         );
     }
 }
