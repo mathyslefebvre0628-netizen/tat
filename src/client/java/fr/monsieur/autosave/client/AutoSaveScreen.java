@@ -25,13 +25,16 @@ public final class AutoSaveScreen extends Screen {
         int left = (this.width - WIDTH) / 2;
         int top = Math.max(15, (this.height - HEIGHT) / 2);
 
-        // Auto Save
         toggleButton = Button.builder(
                 Component.literal(toggleText()),
                 button -> {
                     AutoSaveConfig.enabled = !AutoSaveConfig.enabled;
                     AutoSaveConfig.save();
-                    button.setMessage(Component.literal(toggleText()));
+
+                    button.setMessage(
+                            Component.literal(toggleText())
+                    );
+
                     status = AutoSaveConfig.enabled
                             ? "Sauvegarde automatique activée"
                             : "Sauvegarde automatique désactivée";
@@ -45,7 +48,6 @@ public final class AutoSaveScreen extends Screen {
 
         addRenderableWidget(toggleButton);
 
-        // Choisir un dossier
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Choisir un dossier"),
@@ -58,7 +60,6 @@ public final class AutoSaveScreen extends Screen {
                 ).build()
         );
 
-        // Sauvegardes
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Utiliser une sauvegarde"),
@@ -71,7 +72,6 @@ public final class AutoSaveScreen extends Screen {
                 ).build()
         );
 
-        // Enregistrer
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Enregistrer"),
@@ -87,7 +87,6 @@ public final class AutoSaveScreen extends Screen {
                 ).build()
         );
 
-        // Fermer
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Fermer"),
@@ -108,7 +107,7 @@ public final class AutoSaveScreen extends Screen {
     }
 
     private void openBackupScreen() {
-        this.minecraft.setScreen(
+        this.minecraft.gui.setScreen(
                 new BackupSelectScreen(this)
         );
     }
@@ -124,7 +123,7 @@ public final class AutoSaveScreen extends Screen {
         AutoSaveConfig.save();
 
         if (this.minecraft != null) {
-            this.minecraft.setScreen(parent);
+            this.minecraft.gui.setScreen(parent);
         }
     }
 
@@ -143,9 +142,12 @@ public final class AutoSaveScreen extends Screen {
         );
 
         int left = (this.width - WIDTH) / 2;
-        int top = Math.max(15, (this.height - HEIGHT) / 2);
+        int top = Math.max(
+                15,
+                (this.height - HEIGHT) / 2
+        );
 
-        // Fond
+        // Fond général
         graphics.fill(
                 0,
                 0,
@@ -163,7 +165,7 @@ public final class AutoSaveScreen extends Screen {
                 0x70000000
         );
 
-        // Cadre
+        // Panneau
         graphics.fill(
                 left,
                 top,
@@ -172,7 +174,7 @@ public final class AutoSaveScreen extends Screen {
                 0xFF111111
         );
 
-        // Barre supérieure
+        // En-tête
         graphics.fill(
                 left,
                 top,
@@ -181,7 +183,6 @@ public final class AutoSaveScreen extends Screen {
                 0xFF181818
         );
 
-        // Ligne de séparation
         graphics.fill(
                 left,
                 top + 63,
@@ -252,7 +253,8 @@ public final class AutoSaveScreen extends Screen {
         }
 
         if (folderText.length() > 75) {
-            folderText = folderText.substring(0, 72) + "...";
+            folderText =
+                    folderText.substring(0, 72) + "...";
         }
 
         // Zone du chemin
@@ -286,7 +288,9 @@ public final class AutoSaveScreen extends Screen {
         // Intervalle
         graphics.text(
                 this.font,
-                Component.literal("Intervalle automatique : 5 minutes"),
+                Component.literal(
+                        "Intervalle automatique : 5 minutes"
+                ),
                 left + 35,
                 top + 285,
                 0xFF666666,
