@@ -7,6 +7,9 @@ import net.minecraft.network.chat.Component;
 
 public final class AutoSaveScreen extends Screen {
 
+    private static final int MAX_WINDOW_WIDTH = 520;
+    private static final int MAX_WINDOW_HEIGHT = 390;
+
     private final Screen parent;
 
     private Button toggleButton;
@@ -14,6 +17,8 @@ public final class AutoSaveScreen extends Screen {
 
     private boolean intervalMenuOpen = false;
     private int intervalScroll = 0;
+
+    private double contentScroll = 0.0;
 
     private String status = "Prêt";
 
@@ -37,116 +42,191 @@ public final class AutoSaveScreen extends Screen {
     }
 
     private void refreshWidgets() {
+
         clearWidgets();
 
-        Layout layout = calculateLayout();
+        Layout l = calculateLayout();
 
-        toggleButton = Button.builder(
-                Component.literal(
-                        AutoSaveConfig.enabled ? "ON" : "OFF"
-                ),
-                button -> {
-                    AutoSaveConfig.enabled = !AutoSaveConfig.enabled;
-                    AutoSaveConfig.save();
+        /*
+         * ON / OFF
+         */
+        toggleButton =
+                Button.builder(
+                        Component.literal(
+                                AutoSaveConfig.enabled
+                                        ? "ON"
+                                        : "OFF"
+                        ),
+                        button -> {
 
-                    button.setMessage(
-                            Component.literal(
+                            AutoSaveConfig.enabled =
+                                    !AutoSaveConfig.enabled;
+
+                            AutoSaveConfig.save();
+
+                            button.setMessage(
+                                    Component.literal(
+                                            AutoSaveConfig.enabled
+                                                    ? "ON"
+                                                    : "OFF"
+                                    )
+                            );
+
+                            status =
                                     AutoSaveConfig.enabled
-                                            ? "ON"
-                                            : "OFF"
-                            )
-                    );
-
-                    status = AutoSaveConfig.enabled
-                            ? "Sauvegarde activée"
-                            : "Sauvegarde désactivée";
-                }
-        ).bounds(
-                layout.controlX,
-                layout.toggleY,
-                layout.controlWidth,
-                layout.buttonHeight
-        ).build();
+                                            ? "Sauvegarde activée"
+                                            : "Sauvegarde désactivée";
+                        }
+                ).bounds(
+                        l.controlX,
+                        l.toggleY,
+                        l.controlWidth,
+                        l.buttonHeight
+                ).build();
 
         addRenderableWidget(toggleButton);
 
-        intervalButton = Button.builder(
-                Component.literal(
-                        getCurrentIntervalName()
-                ),
-                button -> toggleIntervalMenu()
-        ).bounds(
-                layout.controlX,
-                layout.intervalY,
-                layout.controlWidth,
-                layout.buttonHeight
-        ).build();
+        /*
+         * INTERVALLE
+         */
+        intervalButton =
+                Button.builder(
+                        Component.literal(
+                                getCurrentIntervalName()
+                        ),
+                        button ->
+                                toggleIntervalMenu()
+                ).bounds(
+                        l.controlX,
+                        l.intervalY,
+                        l.controlWidth,
+                        l.buttonHeight
+                ).build();
 
         addRenderableWidget(intervalButton);
 
+        /*
+         * SELECT
+         */
         addRenderableWidget(
                 Button.builder(
                         Component.literal("SELECT"),
                         button ->
-                                AutoSaveService.chooseFolder(this)
+                                AutoSaveService.chooseFolder(
+                                        this
+                                )
                 ).bounds(
-                        layout.selectFolderX,
-                        layout.folderButtonY,
-                        layout.smallButtonWidth,
-                        layout.buttonHeight
+                        l.selectX,
+                        l.folderY,
+                        l.halfWidth,
+                        l.buttonHeight
                 ).build()
         );
 
+        /*
+         * SAVE NOW
+         */
+        addRenderableWidget(
+                Button.builder(
+                        Component.literal("SAVE NOW"),
+                        button -> {
+
+                            if (AutoSaveConfig.folder == null
+                                    || AutoSaveConfig.folder.isBlank()) {
+
+                                status =
+                                        "Sélectionne un dossier d'abord";
+
+                                return;
+                            }
+
+                            AutoSaveService.createBackup(
+                                    Minecraft.getInstance()
+                            );
+
+                            status =
+                                    "Sauvegarde en cours...";
+                        }
+                ).bounds(
+                        l.restoreX,
+                        l.folderY,
+                        l.halfWidth,
+                        l.buttonHeight
+                ).build()
+        );
+
+        /*
+         * RESTORE
+         */
         addRenderableWidget(
                 Button.builder(
                         Component.literal("RESTORE"),
-                        button -> openBackupScreen()
+                        button ->
+                                openBackupScreen()
                 ).bounds(
-                        layout.restoreX,
-                        layout.folderButtonY,
-                        layout.smallButtonWidth,
-                        layout.buttonHeight
+                        l.restoreX,
+                        l.restoreY,
+                        l.halfWidth,
+                        l.buttonHeight
                 ).build()
         );
 
+        /*
+         * SAVE CONFIG
+         */
         addRenderableWidget(
                 Button.builder(
-                        Component.literal("SAVE"),
+                        Component.literal("SAVE CONFIG"),
                         button -> {
+
                             AutoSaveConfig.save();
-                            status = "Configuration enregistrée";
+
+                            status =
+                                    "Configuration enregistrée";
                         }
                 ).bounds(
-                        layout.saveX,
-                        layout.footerY,
-                        layout.footerButtonWidth,
-                        layout.buttonHeight
+                        l.saveX,
+                        l.footerY,
+                        l.footerButtonWidth,
+                        l.buttonHeight
                 ).build()
         );
 
+        /*
+         * CLOSE
+         */
         addRenderableWidget(
                 Button.builder(
                         Component.literal("CLOSE"),
                         button -> onClose()
                 ).bounds(
-                        layout.closeX,
-                        layout.footerY,
-                        layout.footerButtonWidth,
-                        layout.buttonHeight
+                        l.closeX,
+                        l.footerY,
+                        l.footerButtonWidth,
+                        l.buttonHeight
                 ).build()
         );
 
+        /*
+         * MENU INTERVALLE
+         */
         if (intervalMenuOpen) {
-            int visible = layout.visibleIntervalCount;
+
+            int visible =
+                    l.visibleIntervalCount;
 
             for (int i = 0; i < visible; i++) {
-                int actualIndex = intervalScroll + i;
 
-                if (actualIndex >= INTERVALS.length) {
+                int actualIndex =
+                        intervalScroll + i;
+
+                if (actualIndex
+                        >= INTERVALS.length) {
                     break;
                 }
 
-                final int index = actualIndex;
+                final int index =
+                        actualIndex;
 
                 addRenderableWidget(
                         Button.builder(
@@ -158,11 +238,12 @@ public final class AutoSaveScreen extends Screen {
                                                 INTERVALS[index]
                                         )
                         ).bounds(
-                                layout.menuX,
-                                layout.menuY
-                                        + i * layout.menuOptionHeight,
-                                layout.menuWidth,
-                                layout.menuOptionHeight
+                                l.menuX,
+                                l.menuY
+                                        + i
+                                        * l.menuOptionHeight,
+                                l.menuWidth,
+                                l.menuOptionHeight
                         ).build()
                 );
             }
@@ -170,16 +251,17 @@ public final class AutoSaveScreen extends Screen {
     }
 
     private void toggleIntervalMenu() {
-        intervalMenuOpen = !intervalMenuOpen;
 
-        if (!intervalMenuOpen) {
-            intervalScroll = 0;
-        }
+        intervalMenuOpen =
+                !intervalMenuOpen;
 
-        status = intervalMenuOpen
-                ? "Choisis un intervalle"
-                : "Intervalle : "
-                + getCurrentIntervalName();
+        intervalScroll = 0;
+
+        status =
+                intervalMenuOpen
+                        ? "Choisis un intervalle"
+                        : "Intervalle : "
+                        + getCurrentIntervalName();
 
         refreshWidgets();
     }
@@ -187,6 +269,7 @@ public final class AutoSaveScreen extends Screen {
     private void selectInterval(
             IntervalOption option
     ) {
+
         AutoSaveConfig.intervalTicks =
                 option.ticks;
 
@@ -202,11 +285,23 @@ public final class AutoSaveScreen extends Screen {
         refreshWidgets();
     }
 
+    private String getCurrentIntervalName() {
+
+        for (IntervalOption option :
+                INTERVALS) {
+
+            if (option.ticks
+                    == AutoSaveConfig.intervalTicks) {
+
+                return option.name;
+            }
+        }
+
+        return "5 MIN";
+    }
+
     /*
-     * Molette pour faire défiler le menu.
-     *
-     * Minecraft 26.2 utilise les quatre paramètres
-     * de mouseScrolled.
+     * MOLETTE
      */
     @Override
     public boolean mouseScrolled(
@@ -215,83 +310,84 @@ public final class AutoSaveScreen extends Screen {
             double horizontalAmount,
             double verticalAmount
     ) {
-        if (!intervalMenuOpen) {
-            return super.mouseScrolled(
-                    mouseX,
-                    mouseY,
-                    horizontalAmount,
-                    verticalAmount
-            );
-        }
 
-        Layout layout = calculateLayout();
+        Layout l =
+                calculateLayout();
 
-        boolean insideMenu =
-                mouseX >= layout.menuX
-                        && mouseX <= layout.menuX
-                        + layout.menuWidth
-                        && mouseY >= layout.menuY
-                        && mouseY <= layout.menuY
-                        + layout.menuHeight;
+        /*
+         * Menu intervalle
+         */
+        if (intervalMenuOpen
+                && mouseX >= l.menuX
+                && mouseX <= l.menuX + l.menuWidth
+                && mouseY >= l.menuY
+                && mouseY <= l.menuY + l.menuHeight) {
 
-        if (!insideMenu) {
-            return super.mouseScrolled(
-                    mouseX,
-                    mouseY,
-                    horizontalAmount,
-                    verticalAmount
-            );
-        }
-
-        int maxScroll =
-                Math.max(
-                        0,
-                        INTERVALS.length
-                                - layout.visibleIntervalCount
-                );
-
-        if (verticalAmount < 0) {
-            intervalScroll =
-                    Math.min(
-                            maxScroll,
-                            intervalScroll + 1
-                    );
-        } else if (verticalAmount > 0) {
-            intervalScroll =
+            int maxScroll =
                     Math.max(
                             0,
-                            intervalScroll - 1
+                            INTERVALS.length
+                                    - l.visibleIntervalCount
+                    );
+
+            if (verticalAmount < 0) {
+
+                intervalScroll =
+                        Math.min(
+                                maxScroll,
+                                intervalScroll + 1
+                        );
+
+            } else if (verticalAmount > 0) {
+
+                intervalScroll =
+                        Math.max(
+                                0,
+                                intervalScroll - 1
+                        );
+            }
+
+            refreshWidgets();
+
+            return true;
+        }
+
+        /*
+         * Scroll général de la fenêtre.
+         */
+        if (verticalAmount < 0) {
+
+            contentScroll =
+                    Math.min(
+                            getMaxContentScroll(),
+                            contentScroll + 20
+                    );
+
+        } else if (verticalAmount > 0) {
+
+            contentScroll =
+                    Math.max(
+                            0,
+                            contentScroll - 20
                     );
         }
 
         refreshWidgets();
+
         return true;
     }
 
-    private String getCurrentIntervalName() {
-        int ticks =
-                AutoSaveConfig.intervalTicks;
+    private double getMaxContentScroll() {
+        Layout l = calculateLayout();
 
-        for (IntervalOption option :
-                INTERVALS) {
-
-            if (option.ticks == ticks) {
-                return option.name;
-            }
-        }
-
-        return "5 MIN";
-    }
-
-    private void openBackupScreen() {
-        if (this.minecraft != null) {
-            this.minecraft.gui.setScreen(
-                    new BackupSelectScreen(this)
-            );
-        }
+        return Math.max(
+                0,
+                l.contentHeight - l.visibleHeight
+        );
     }
 
     void updateFolder(String path) {
+
         AutoSaveConfig.folder =
                 path;
 
@@ -301,11 +397,23 @@ public final class AutoSaveScreen extends Screen {
                 "Dossier sélectionné";
     }
 
+    private void openBackupScreen() {
+
+        if (this.minecraft != null) {
+
+            this.minecraft.gui.setScreen(
+                    new BackupSelectScreen(this)
+            );
+        }
+    }
+
     @Override
     public void onClose() {
+
         AutoSaveConfig.save();
 
         if (this.minecraft != null) {
+
             this.minecraft.gui.setScreen(
                     parent
             );
@@ -319,11 +427,12 @@ public final class AutoSaveScreen extends Screen {
             int mouseY,
             float delta
     ) {
-        Layout layout =
+
+        Layout l =
                 calculateLayout();
 
         /*
-         * Minecraft visible derrière.
+         * JEU DERRIÈRE
          */
         graphics.fill(
                 0,
@@ -334,70 +443,32 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * Ombre.
+         * FENÊTRE
          */
         graphics.fill(
-                layout.left + 5,
-                layout.top + 5,
-                layout.right + 5,
-                layout.bottom + 5,
-                0x55000000
-        );
-
-        /*
-         * Fenêtre compacte.
-         */
-        graphics.fill(
-                layout.left,
-                layout.top,
-                layout.right,
-                layout.bottom,
+                l.left,
+                l.top,
+                l.right,
+                l.bottom,
                 0xFF090909
         );
 
         /*
-         * Bordure.
+         * HEADER
          */
         graphics.fill(
-                layout.left,
-                layout.top,
-                layout.right,
-                layout.top + 1,
-                0xFF242424
+                l.left,
+                l.top,
+                l.right,
+                l.headerBottom,
+                0xFF0B0B0B
         );
 
-        graphics.fill(
-                layout.left,
-                layout.bottom - 1,
-                layout.right,
-                layout.bottom,
-                0xFF242424
-        );
-
-        graphics.fill(
-                layout.left,
-                layout.top,
-                layout.left + 1,
-                layout.bottom,
-                0xFF242424
-        );
-
-        graphics.fill(
-                layout.right - 1,
-                layout.top,
-                layout.right,
-                layout.bottom,
-                0xFF242424
-        );
-
-        /*
-         * Header.
-         */
         graphics.text(
                 this.font,
                 Component.literal("AS"),
-                layout.left + layout.padding,
-                layout.top + 16,
+                l.left + l.padding,
+                l.top + 14,
                 0xFFFFFFFF,
                 true
         );
@@ -405,8 +476,8 @@ public final class AutoSaveScreen extends Screen {
         graphics.text(
                 this.font,
                 Component.literal("AUTO SAVE"),
-                layout.left + layout.padding + 24,
-                layout.top + 11,
+                l.left + l.padding + 24,
+                l.top + 10,
                 0xFFFFFFFF,
                 true
         );
@@ -416,135 +487,80 @@ public final class AutoSaveScreen extends Screen {
                 Component.literal(
                         "Automatic World Backup"
                 ),
-                layout.left + layout.padding + 24,
-                layout.top + 27,
+                l.left + l.padding + 24,
+                l.top + 26,
                 0xFF666666,
                 false
         );
 
         /*
-         * Status.
+         * CONTENU DÉFILABLE
          */
-        int dotX =
-                layout.right
-                        - layout.padding
-                        - 55;
+        int scroll =
+                (int) contentScroll;
 
-        graphics.fill(
-                dotX,
-                layout.top + 19,
-                dotX + 5,
-                layout.top + 24,
-                AutoSaveConfig.enabled
-                        ? 0xFFFFFFFF
-                        : 0xFF444444
-        );
-
-        graphics.text(
-                this.font,
-                Component.literal(
-                        AutoSaveConfig.enabled
-                                ? "ON"
-                                : "OFF"
-                ),
-                dotX + 10,
-                layout.top + 15,
-                0xFF777777,
-                false
+        graphics.enableScissor(
+                l.left,
+                l.contentTop,
+                l.right,
+                l.contentBottom
         );
 
         /*
-         * Séparateur.
+         * AUTOMATIC
          */
-        graphics.fill(
-                layout.left
-                        + layout.padding,
-                layout.headerBottom,
-                layout.right
-                        - layout.padding,
-                layout.headerBottom + 1,
-                0xFF202020
+        drawText(
+                graphics,
+                "AUTOMATIC BACKUP",
+                l.left + l.padding,
+                l.autoTitleY - scroll,
+                0xFF666666
+        );
+
+        drawText(
+                graphics,
+                "Automatic backup",
+                l.left + l.padding,
+                l.autoNameY - scroll,
+                0xFFFFFFFF
+        );
+
+        drawText(
+                graphics,
+                "Backup while playing.",
+                l.left + l.padding,
+                l.autoDescriptionY - scroll,
+                0xFF666666
         );
 
         /*
-         * AUTOMATIC BACKUP.
+         * INTERVALLE
          */
-        graphics.text(
-                this.font,
-                Component.literal(
-                        "AUTOMATIC BACKUP"
-                ),
-                layout.left
-                        + layout.padding,
-                layout.autoTitleY,
-                0xFF666666,
-                true
+        drawText(
+                graphics,
+                "BACKUP INTERVAL",
+                l.left + l.padding,
+                l.intervalNameY - scroll,
+                0xFF666666
         );
 
-        graphics.text(
-                this.font,
-                Component.literal(
-                        "Automatic backup"
-                ),
-                layout.left
-                        + layout.padding,
-                layout.autoNameY,
-                0xFFFFFFFF,
-                true
-        );
-
-        graphics.text(
-                this.font,
-                Component.literal(
-                        "Backup while playing."
-                ),
-                layout.left
-                        + layout.padding,
-                layout.autoDescriptionY,
-                0xFF666666,
-                false
+        drawText(
+                graphics,
+                "Backup frequency.",
+                l.left + l.padding,
+                l.intervalDescriptionY - scroll,
+                0xFF666666
         );
 
         /*
-         * INTERVALLE.
+         * LOCATION
          */
-        graphics.text(
-                this.font,
-                Component.literal(
-                        "Backup interval"
-                ),
-                layout.left
-                        + layout.padding,
-                layout.intervalNameY,
-                0xFFFFFFFF,
-                true
-        );
-
-        graphics.text(
-                this.font,
-                Component.literal(
-                        "Backup frequency"
-                ),
-                layout.left
-                        + layout.padding,
-                layout.intervalDescriptionY,
-                0xFF666666,
-                false
-        );
-
-        /*
-         * LOCATION.
-         */
-        graphics.text(
-                this.font,
-                Component.literal(
-                        "BACKUP LOCATION"
-                ),
-                layout.left
-                        + layout.padding,
-                layout.locationTitleY,
-                0xFF666666,
-                true
+        drawText(
+                graphics,
+                "BACKUP LOCATION",
+                l.left + l.padding,
+                l.locationTitleY - scroll,
+                0xFF666666
         );
 
         String folder =
@@ -553,159 +569,101 @@ public final class AutoSaveScreen extends Screen {
                         ? "No folder selected"
                         : AutoSaveConfig.folder;
 
-        if (folder.length()
-                > layout.maxPathLength) {
+        if (folder.length() > 55) {
 
             folder =
                     "..."
                             + folder.substring(
-                            folder.length()
-                                    - layout.maxPathLength
-                                    + 3
+                            folder.length() - 52
                     );
         }
 
         graphics.fill(
-                layout.pathX,
-                layout.pathY,
-                layout.pathRight,
-                layout.pathBottom,
+                l.pathX,
+                l.pathY - scroll,
+                l.pathRight,
+                l.pathBottom - scroll,
                 0xFF050505
         );
 
-        graphics.text(
-                this.font,
-                Component.literal(folder),
-                layout.pathTextX,
-                layout.pathTextY,
-                0xFF888888,
-                false
+        drawText(
+                graphics,
+                folder,
+                l.pathTextX,
+                l.pathTextY - scroll,
+                0xFF888888
         );
 
         /*
-         * BACKUPS.
+         * BACKUPS
+         */
+        drawText(
+                graphics,
+                "SAVED BACKUPS",
+                l.left + l.padding,
+                l.backupsTitleY - scroll,
+                0xFF666666
+        );
+
+        int count =
+                AutoSaveService.listBackups().length;
+
+        drawText(
+                graphics,
+                count + (
+                        count == 1
+                                ? " backup"
+                                : " backups"
+                ),
+                l.left + l.padding,
+                l.backupsCountY - scroll,
+                0xFF666666
+        );
+
+        graphics.disableScissor();
+
+        /*
+         * STATUT
          */
         graphics.text(
                 this.font,
-                Component.literal(
-                        "SAVED BACKUPS"
-                ),
-                layout.left
-                        + layout.padding,
-                layout.backupsTitleY,
-                0xFF666666,
-                true
-        );
-
-        int backupCount =
-                AutoSaveService.listBackups().length;
-
-        graphics.text(
-                this.font,
-                Component.literal(
-                        backupCount
-                                + (
-                                backupCount == 1
-                                        ? " backup"
-                                        : " backups"
-                        )
-                ),
-                layout.left
-                        + layout.padding,
-                layout.backupsCountY,
-                0xFF666666,
-                false
-        );
-
-        graphics.text(
-                this.font,
                 Component.literal(status),
-                layout.left
-                        + layout.padding,
-                layout.statusY,
+                l.left + l.padding,
+                l.statusY,
                 0xFF555555,
                 false
         );
 
         /*
-         * Fond du menu.
+         * MENU INTERVALLE
          */
         if (intervalMenuOpen) {
+
             graphics.fill(
-                    layout.menuX - 1,
-                    layout.menuY - 1,
-                    layout.menuX
-                            + layout.menuWidth + 1,
-                    layout.menuY
-                            + layout.menuHeight + 1,
+                    l.menuX - 1,
+                    l.menuY - 1,
+                    l.menuX
+                            + l.menuWidth
+                            + 1,
+                    l.menuY
+                            + l.menuHeight
+                            + 1,
                     0xFF333333
             );
 
             graphics.fill(
-                    layout.menuX,
-                    layout.menuY,
-                    layout.menuX
-                            + layout.menuWidth,
-                    layout.menuY
-                            + layout.menuHeight,
+                    l.menuX,
+                    l.menuY,
+                    l.menuX
+                            + l.menuWidth,
+                    l.menuY
+                            + l.menuHeight,
                     0xFF050505
             );
-
-            /*
-             * Indication visuelle du scroll.
-             */
-            if (INTERVALS.length
-                    > layout.visibleIntervalCount) {
-
-                int trackX =
-                        layout.menuX
-                                + layout.menuWidth
-                                - 5;
-
-                graphics.fill(
-                        trackX,
-                        layout.menuY,
-                        trackX + 2,
-                        layout.menuY
-                                + layout.menuHeight,
-                        0xFF222222
-                );
-
-                int thumbHeight =
-                        Math.max(
-                                10,
-                                layout.menuHeight
-                                        * layout.visibleIntervalCount
-                                        / INTERVALS.length
-                        );
-
-                int maxScroll =
-                        INTERVALS.length
-                                - layout.visibleIntervalCount;
-
-                int thumbOffset =
-                        maxScroll == 0
-                                ? 0
-                                : (layout.menuHeight
-                                - thumbHeight)
-                                * intervalScroll
-                                / maxScroll;
-
-                graphics.fill(
-                        trackX,
-                        layout.menuY
-                                + thumbOffset,
-                        trackX + 2,
-                        layout.menuY
-                                + thumbOffset
-                                + thumbHeight,
-                        0xFFFFFFFF
-                );
-            }
         }
 
         /*
-         * Widgets au-dessus du rendu.
+         * WIDGETS PAR-DESSUS.
          */
         super.extractRenderState(
                 graphics,
@@ -715,40 +673,45 @@ public final class AutoSaveScreen extends Screen {
         );
     }
 
+    private void drawText(
+            GuiGraphicsExtractor graphics,
+            String text,
+            int x,
+            int y,
+            int color
+    ) {
+
+        graphics.text(
+                this.font,
+                Component.literal(text),
+                x,
+                y,
+                color,
+                false
+        );
+    }
+
     private Layout calculateLayout() {
 
-        /*
-         * GUI SCALE 4 :
-         * on travaille uniquement avec l'espace
-         * logique réel de Minecraft.
-         */
         int w = this.width;
         int h = this.height;
 
         int windowWidth =
-                clamp(
-                        (int) (w * 0.84),
-                        300,
-                        520
+                Math.min(
+                        MAX_WINDOW_WIDTH,
+                        Math.max(
+                                300,
+                                w - 10
+                        )
                 );
 
         int windowHeight =
-                clamp(
-                        (int) (h * 0.86),
-                        260,
-                        390
-                );
-
-        windowWidth =
                 Math.min(
-                        windowWidth,
-                        w - 12
-                );
-
-        windowHeight =
-                Math.min(
-                        windowHeight,
-                        h - 12
+                        MAX_WINDOW_HEIGHT,
+                        Math.max(
+                                250,
+                                h - 10
+                        )
                 );
 
         int left =
@@ -758,106 +721,114 @@ public final class AutoSaveScreen extends Screen {
                 (h - windowHeight) / 2;
 
         int padding =
-                clamp(
-                        windowWidth / 14,
+                Math.max(
                         12,
-                        24
+                        Math.min(
+                                20,
+                                windowWidth / 18
+                        )
                 );
 
-        int buttonHeight =
-                clamp(
-                        windowHeight / 12,
-                        20,
-                        26
-                );
+        int buttonHeight = 22;
 
         int controlWidth =
-                clamp(
-                        windowWidth / 5,
-                        70,
-                        105
+                Math.min(
+                        95,
+                        Math.max(
+                                70,
+                                windowWidth / 5
+                        )
                 );
 
-        int smallButtonWidth =
-                (windowWidth
-                        - padding * 2
-                        - 8) / 2;
+        int halfWidth =
+                Math.max(
+                        100,
+                        (
+                                windowWidth
+                                        - padding * 2
+                                        - 6
+                        ) / 2
+                );
 
         int headerBottom =
+                top + 48;
+
+        int contentTop =
+                top + 48;
+
+        int contentBottom =
                 top
-                        + clamp(
-                        windowHeight / 5,
-                        45,
-                        65
-                );
+                        + windowHeight
+                        - 35;
 
-        int toggleY =
-                top + 62;
-
-        int intervalY =
-                top + 111;
+        int visibleHeight =
+                contentBottom
+                        - contentTop;
 
         int autoTitleY =
-                top + 72;
+                contentTop + 18;
 
         int autoNameY =
-                autoTitleY + 16;
+                autoTitleY + 19;
 
         int autoDescriptionY =
-                autoNameY + 14;
+                autoNameY + 15;
 
         int intervalNameY =
-                autoDescriptionY + 28;
+                autoDescriptionY + 32;
 
         int intervalDescriptionY =
                 intervalNameY + 15;
 
         int locationTitleY =
-                intervalDescriptionY + 31;
+                intervalDescriptionY + 30;
 
         int pathY =
-                locationTitleY + 10;
+                locationTitleY + 13;
 
-        int pathHeight =
-                27;
+        int pathBottom =
+                pathY + 27;
 
-        int folderButtonY =
-                pathY + pathHeight + 8;
+        int folderY =
+                pathBottom + 8;
+
+        int restoreY =
+                folderY + buttonHeight + 8;
 
         int backupsTitleY =
-                folderButtonY
-                        + buttonHeight
-                        + 17;
+                restoreY + buttonHeight + 18;
 
         int backupsCountY =
                 backupsTitleY + 15;
+
+        int contentHeight =
+                backupsCountY
+                        + 30
+                        - contentTop;
 
         int footerY =
                 top
                         + windowHeight
                         - buttonHeight
-                        - 11;
+                        - 8;
 
         int statusY =
-                footerY - 18;
+                footerY - 15;
 
-        int footerButtonWidth =
-                clamp(
-                        windowWidth / 6,
-                        62,
-                        82
-                );
+        int saveWidth = 75;
+
+        int closeWidth = 75;
 
         int closeX =
                 left
                         + windowWidth
                         - padding
-                        - footerButtonWidth;
+                        - closeWidth;
 
         int saveX =
                 closeX
-                        - 7
-                        - footerButtonWidth;
+                        - 5
+                        - saveWidth;
 
         int controlX =
                 left
@@ -865,56 +836,41 @@ public final class AutoSaveScreen extends Screen {
                         - padding
                         - controlWidth;
 
-        int selectFolderX =
+        int selectX =
                 left + padding;
 
-        int restoreX =
-                selectFolderX
-                        + smallButtonWidth
-                        + 8;
-
         int menuWidth =
-                controlWidth + 12;
+                controlWidth + 8;
 
-        int visibleIntervalCount =
-                h < 190
-                        ? 3
-                        : 4;
+        int menuX =
+                controlX - 8;
+
+        int menuY =
+                top + 180;
 
         int menuOptionHeight = 22;
 
-        int menuX =
-                controlX
-                        - 12;
-
-        int menuY =
-                intervalY
-                        + buttonHeight
-                        + 5;
+        int visibleIntervalCount =
+                Math.max(
+                        2,
+                        Math.min(
+                                4,
+                                (h - 150)
+                                        / menuOptionHeight
+                        )
+                );
 
         int menuHeight =
                 visibleIntervalCount
                         * menuOptionHeight;
 
-        int pathX =
-                left + padding;
-
-        int pathRight =
-                left
-                        + windowWidth
-                        - padding;
-
-        int pathTextX =
-                pathX + 8;
-
-        int pathTextY =
-                pathY + 7;
-
         int maxPathLength =
-                clamp(
-                        windowWidth / 8,
-                        28,
-                        55
+                Math.max(
+                        20,
+                        Math.min(
+                                55,
+                                windowWidth / 8
+                        )
                 );
 
         return new Layout(
@@ -926,9 +882,12 @@ public final class AutoSaveScreen extends Screen {
                 buttonHeight,
                 controlX,
                 controlWidth,
-                toggleY,
-                intervalY,
+                top + 65,
+                top + 108,
                 headerBottom,
+                contentTop,
+                contentBottom,
+                visibleHeight,
                 autoTitleY,
                 autoNameY,
                 autoDescriptionY,
@@ -936,21 +895,19 @@ public final class AutoSaveScreen extends Screen {
                 intervalDescriptionY,
                 locationTitleY,
                 pathY,
-                pathY + pathHeight,
-                pathX,
-                pathRight,
-                pathTextX,
-                pathTextY,
-                selectFolderX,
-                restoreX,
-                smallButtonWidth,
-                folderButtonY,
+                pathBottom,
+                selectX,
+                selectX + halfWidth + 6,
+                halfWidth,
+                folderY,
+                restoreY,
                 backupsTitleY,
                 backupsCountY,
                 statusY,
                 saveX,
                 closeX,
-                footerButtonWidth,
+                saveWidth,
+                closeWidth,
                 footerY,
                 menuX,
                 menuY,
@@ -958,21 +915,12 @@ public final class AutoSaveScreen extends Screen {
                 menuOptionHeight,
                 menuHeight,
                 visibleIntervalCount,
-                maxPathLength
-        );
-    }
-
-    private static int clamp(
-            int value,
-            int min,
-            int max
-    ) {
-        return Math.max(
-                min,
-                Math.min(
-                        max,
-                        value
-                )
+                left + padding,
+                left + windowWidth - padding,
+                pathY + 8,
+                pathY + 8,
+                maxPathLength,
+                contentHeight
         );
     }
 
@@ -994,6 +942,9 @@ public final class AutoSaveScreen extends Screen {
             int toggleY,
             int intervalY,
             int headerBottom,
+            int contentTop,
+            int contentBottom,
+            int visibleHeight,
             int autoTitleY,
             int autoNameY,
             int autoDescriptionY,
@@ -1002,20 +953,18 @@ public final class AutoSaveScreen extends Screen {
             int locationTitleY,
             int pathY,
             int pathBottom,
-            int pathX,
-            int pathRight,
-            int pathTextX,
-            int pathTextY,
-            int selectFolderX,
+            int selectX,
             int restoreX,
-            int smallButtonWidth,
-            int folderButtonY,
+            int halfWidth,
+            int folderY,
+            int restoreY,
             int backupsTitleY,
             int backupsCountY,
             int statusY,
             int saveX,
             int closeX,
-            int footerButtonWidth,
+            int saveWidth,
+            int closeWidth,
             int footerY,
             int menuX,
             int menuY,
@@ -1023,7 +972,12 @@ public final class AutoSaveScreen extends Screen {
             int menuOptionHeight,
             int menuHeight,
             int visibleIntervalCount,
-            int maxPathLength
+            int pathX,
+            int pathRight,
+            int pathTextX,
+            int pathTextY,
+            int maxPathLength,
+            int contentHeight
     ) {
     }
 }
