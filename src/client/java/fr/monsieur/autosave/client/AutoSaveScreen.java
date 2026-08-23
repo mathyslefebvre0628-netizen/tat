@@ -15,8 +15,9 @@ public final class AutoSaveScreen extends Screen {
     private Button toggleButton;
     private Button intervalButton;
 
-    private boolean intervalMenuOpen = false;
     private String status = "Prêt";
+
+    private boolean intervalMenuOpen = false;
 
     private static final IntervalOption[] INTERVALS = {
             new IntervalOption("1 min", 20 * 60),
@@ -34,6 +35,12 @@ public final class AutoSaveScreen extends Screen {
 
     @Override
     protected void init() {
+        rebuildWidgets();
+    }
+
+    private void rebuildWidgets() {
+        clearWidgets();
+
         int panelWidth = getPanelWidth();
         int panelHeight = getPanelHeight();
 
@@ -41,7 +48,7 @@ public final class AutoSaveScreen extends Screen {
         int top = (this.height - panelHeight) / 2;
 
         /*
-         * AUTO SAVE ON / OFF
+         * Auto Save
          */
         toggleButton = Button.builder(
                 Component.literal(
@@ -71,7 +78,22 @@ public final class AutoSaveScreen extends Screen {
         addRenderableWidget(toggleButton);
 
         /*
-         * CHOISIR UN DOSSIER
+         * Intervalle
+         */
+        intervalButton = Button.builder(
+                Component.literal(getCurrentIntervalName()),
+                button -> toggleIntervalMenu()
+        ).bounds(
+                left + panelWidth - 190,
+                top + 147,
+                140,
+                24
+        ).build();
+
+        addRenderableWidget(intervalButton);
+
+        /*
+         * Choisir le dossier
          */
         addRenderableWidget(
                 Button.builder(
@@ -86,7 +108,7 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * UTILISER UNE SAUVEGARDE
+         * Restaurer
          */
         addRenderableWidget(
                 Button.builder(
@@ -101,27 +123,7 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * SÉLECTEUR D'INTERVALLE
-         */
-        intervalButton = Button.builder(
-                Component.literal(getCurrentIntervalName()),
-                button -> {
-                    intervalMenuOpen = !intervalMenuOpen;
-                    status = intervalMenuOpen
-                            ? "Choisis un intervalle"
-                            : "Intervalle : " + getCurrentIntervalName();
-                }
-        ).bounds(
-                left + panelWidth - 190,
-                top + 147,
-                140,
-                24
-        ).build();
-
-        addRenderableWidget(intervalButton);
-
-        /*
-         * ENREGISTRER
+         * Enregistrer
          */
         addRenderableWidget(
                 Button.builder(
@@ -139,19 +141,78 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * FERMER
+         * Fermer
          */
         addRenderableWidget(
                 Button.builder(
                         Component.literal("Fermer"),
                         button -> onClose()
-                ).bounds(
-                        left + 395,
-                        top + panelHeight - 55,
-                        320,
-                        24
-                ).build()
+        ).bounds(
+                left + 395,
+                top + panelHeight - 55,
+                320,
+                24
+        ).build()
         );
+
+        /*
+         * Menu des intervalles
+         */
+        if (intervalMenuOpen) {
+            int menuX = left + panelWidth - 310;
+            int menuY = top + 177;
+            int menuWidth = 260;
+            int optionHeight = 26;
+
+            for (int i = 0; i < INTERVALS.length; i++) {
+                IntervalOption option = INTERVALS[i];
+
+                final int index = i;
+
+                addRenderableWidget(
+                        Button.builder(
+                                Component.literal(option.name),
+                                button -> {
+                                    selectInterval(
+                                            INTERVALS[index]
+                                    );
+                                }
+                        ).bounds(
+                                menuX,
+                                menuY + i * optionHeight,
+                                menuWidth,
+                                optionHeight
+                        ).build()
+                );
+            }
+        }
+    }
+
+    private void toggleIntervalMenu() {
+        intervalMenuOpen = !intervalMenuOpen;
+
+        status = intervalMenuOpen
+                ? "Choisis un intervalle"
+                : "Intervalle : " + getCurrentIntervalName();
+
+        rebuildWidgets();
+    }
+
+    private void selectInterval(IntervalOption option) {
+        AutoSaveConfig.intervalTicks = option.ticks;
+        AutoSaveConfig.save();
+
+        intervalMenuOpen = false;
+
+        if (intervalButton != null) {
+            intervalButton.setMessage(
+                    Component.literal(option.name)
+            );
+        }
+
+        status = "Intervalle : " + option.name;
+
+        rebuildWidgets();
     }
 
     private int getPanelWidth() {
@@ -180,21 +241,6 @@ public final class AutoSaveScreen extends Screen {
         return "5 min";
     }
 
-    private void selectInterval(IntervalOption option) {
-        AutoSaveConfig.intervalTicks = option.ticks;
-        AutoSaveConfig.save();
-
-        intervalMenuOpen = false;
-
-        if (intervalButton != null) {
-            intervalButton.setMessage(
-                    Component.literal(option.name)
-            );
-        }
-
-        status = "Intervalle : " + option.name;
-    }
-
     void updateFolder(String path) {
         AutoSaveConfig.folder = path;
         AutoSaveConfig.save();
@@ -219,50 +265,6 @@ public final class AutoSaveScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(
-            double mouseX,
-            double mouseY,
-            int button
-    ) {
-        if (intervalMenuOpen) {
-            int panelWidth = getPanelWidth();
-            int panelHeight = getPanelHeight();
-
-            int left = (this.width - panelWidth) / 2;
-            int top = (this.height - panelHeight) / 2;
-
-            int menuX = left + panelWidth - 310;
-            int menuY = top + 177;
-            int menuWidth = 260;
-            int optionHeight = 26;
-
-            for (int i = 0; i < INTERVALS.length; i++) {
-                int optionY = menuY + i * optionHeight;
-
-                if (mouseX >= menuX
-                        && mouseX <= menuX + menuWidth
-                        && mouseY >= optionY
-                        && mouseY <= optionY + optionHeight) {
-
-                    selectInterval(INTERVALS[i]);
-                    return true;
-                }
-            }
-
-            if (mouseX < menuX
-                    || mouseX > menuX + menuWidth
-                    || mouseY < menuY
-                    || mouseY > menuY + INTERVALS.length * optionHeight) {
-
-                intervalMenuOpen = false;
-                return true;
-            }
-        }
-
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
-
-    @Override
     public void extractRenderState(
             GuiGraphicsExtractor graphics,
             int mouseX,
@@ -276,11 +278,8 @@ public final class AutoSaveScreen extends Screen {
         int top = (this.height - panelHeight) / 2;
 
         /*
-         * =========================================================
-         * FOND
-         * =========================================================
+         * Fond noir
          */
-
         graphics.fill(
                 0,
                 0,
@@ -290,7 +289,7 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * Ombre extérieure
+         * Ombre
          */
         graphics.fill(
                 left + 8,
@@ -301,7 +300,7 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * Panneau noir
+         * Panneau
          */
         graphics.fill(
                 left,
@@ -312,7 +311,7 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * Bordure blanche très fine
+         * Bordure blanche
          */
         graphics.fill(
                 left,
@@ -347,19 +346,8 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * =========================================================
-         * HEADER
-         * =========================================================
+         * Header
          */
-
-        graphics.fill(
-                left + 1,
-                top + 1,
-                left + panelWidth - 1,
-                top + 70,
-                0xFF000000
-        );
-
         graphics.text(
                 this.font,
                 Component.literal("AUTO SAVE"),
@@ -380,9 +368,6 @@ public final class AutoSaveScreen extends Screen {
                 false
         );
 
-        /*
-         * Ligne blanche
-         */
         graphics.fill(
                 left + 35,
                 top + 68,
@@ -392,11 +377,8 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * =========================================================
-         * AUTO SAVE
-         * =========================================================
+         * Auto Save
          */
-
         graphics.text(
                 this.font,
                 Component.literal("AUTO SAVE"),
@@ -418,11 +400,8 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * =========================================================
-         * INTERVALLE
-         * =========================================================
+         * Intervalle
          */
-
         graphics.text(
                 this.font,
                 Component.literal("INTERVALLE"),
@@ -444,11 +423,8 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * =========================================================
-         * DOSSIER
-         * =========================================================
+         * Dossier
          */
-
         graphics.text(
                 this.font,
                 Component.literal("DOSSIER DE SAUVEGARDE"),
@@ -458,25 +434,18 @@ public final class AutoSaveScreen extends Screen {
                 true
         );
 
-        String folderText;
-
-        if (AutoSaveConfig.folder == null
-                || AutoSaveConfig.folder.isBlank()) {
-            folderText = "Aucun dossier sélectionné";
-        } else {
-            folderText = AutoSaveConfig.folder;
-        }
+        String folderText =
+                AutoSaveConfig.folder == null
+                        || AutoSaveConfig.folder.isBlank()
+                        ? "Aucun dossier sélectionné"
+                        : AutoSaveConfig.folder;
 
         if (folderText.length() > 88) {
-            folderText =
-                    "..." + folderText.substring(
-                            folderText.length() - 85
-                    );
+            folderText = "..." + folderText.substring(
+                    folderText.length() - 85
+            );
         }
 
-        /*
-         * Zone noire du chemin avec contour blanc
-         */
         int folderBoxX = left + 45;
         int folderBoxY = top + 275;
         int folderBoxWidth = panelWidth - 90;
@@ -505,22 +474,6 @@ public final class AutoSaveScreen extends Screen {
                 0xFF555555
         );
 
-        graphics.fill(
-                folderBoxX,
-                folderBoxY,
-                folderBoxX + 1,
-                folderBoxY + 25,
-                0xFF555555
-        );
-
-        graphics.fill(
-                folderBoxX + folderBoxWidth - 1,
-                folderBoxY,
-                folderBoxX + folderBoxWidth,
-                folderBoxY + 25,
-                0xFF555555
-        );
-
         graphics.text(
                 this.font,
                 Component.literal(folderText),
@@ -531,11 +484,8 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * =========================================================
-         * STATUS
-         * =========================================================
+         * Status
          */
-
         graphics.text(
                 this.font,
                 Component.literal(status),
@@ -546,75 +496,22 @@ public final class AutoSaveScreen extends Screen {
         );
 
         /*
-         * =========================================================
-         * MENU INTERVALLE
-         * =========================================================
+         * Intervalle actuel
          */
-
-        if (intervalMenuOpen) {
-            int menuX = left + panelWidth - 310;
-            int menuY = top + 177;
-            int menuWidth = 260;
-            int optionHeight = 26;
-
-            /*
-             * Fond du menu
-             */
-            graphics.fill(
-                    menuX - 2,
-                    menuY - 2,
-                    menuX + menuWidth + 2,
-                    menuY + INTERVALS.length * optionHeight + 2,
-                    0xFFFFFFFF
-            );
-
-            graphics.fill(
-                    menuX,
-                    menuY,
-                    menuX + menuWidth,
-                    menuY + INTERVALS.length * optionHeight,
-                    0xFF000000
-            );
-
-            for (int i = 0; i < INTERVALS.length; i++) {
-                IntervalOption option = INTERVALS[i];
-
-                int optionY =
-                        menuY + i * optionHeight;
-
-                boolean hovered =
-                        mouseX >= menuX
-                                && mouseX <= menuX + menuWidth
-                                && mouseY >= optionY
-                                && mouseY <= optionY + optionHeight;
-
-                if (hovered) {
-                    graphics.fill(
-                            menuX,
-                            optionY,
-                            menuX + menuWidth,
-                            optionY + optionHeight,
-                            0xFFFFFFFF
-                    );
-                }
-
-                graphics.text(
-                        this.font,
-                        Component.literal(option.name),
-                        menuX + 12,
-                        optionY + 8,
-                        hovered
-                                ? 0xFF000000
-                                : 0xFFFFFFFF,
-                        false
-                );
-            }
-        }
+        graphics.text(
+                this.font,
+                Component.literal(
+                        "Intervalle actuel : "
+                                + getCurrentIntervalName()
+                ),
+                left + 45,
+                top + panelHeight - 75,
+                0xFF666666,
+                false
+        );
 
         /*
-         * IMPORTANT :
-         * Minecraft dessine les widgets après notre fond.
-         * Cela évite que notre fond noir recouvre les boutons.
+         * Les widgets sont rendus au-dessus de notre fond.
          */
         super.extractRenderState(
                 graphics,
