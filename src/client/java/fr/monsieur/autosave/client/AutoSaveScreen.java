@@ -39,6 +39,7 @@ public final class AutoSaveScreen extends Screen {
 
         Layout layout = calculateLayout();
 
+        // ON / OFF
         toggleButton = Button.builder(
                 Component.literal(
                         AutoSaveConfig.enabled ? "ON" : "OFF"
@@ -49,7 +50,9 @@ public final class AutoSaveScreen extends Screen {
 
                     button.setMessage(
                             Component.literal(
-                                    AutoSaveConfig.enabled ? "ON" : "OFF"
+                                    AutoSaveConfig.enabled
+                                            ? "ON"
+                                            : "OFF"
                             )
                     );
 
@@ -66,6 +69,7 @@ public final class AutoSaveScreen extends Screen {
 
         addRenderableWidget(toggleButton);
 
+        // Intervalle
         intervalButton = Button.builder(
                 Component.literal(getCurrentIntervalName()),
                 button -> toggleIntervalMenu()
@@ -78,6 +82,7 @@ public final class AutoSaveScreen extends Screen {
 
         addRenderableWidget(intervalButton);
 
+        // Choisir dossier
         addRenderableWidget(
                 Button.builder(
                         Component.literal("SELECT FOLDER"),
@@ -90,6 +95,7 @@ public final class AutoSaveScreen extends Screen {
                 ).build()
         );
 
+        // Restaurer
         addRenderableWidget(
                 Button.builder(
                         Component.literal("RESTORE BACKUP"),
@@ -102,6 +108,7 @@ public final class AutoSaveScreen extends Screen {
                 ).build()
         );
 
+        // Save
         addRenderableWidget(
                 Button.builder(
                         Component.literal("SAVE"),
@@ -117,6 +124,7 @@ public final class AutoSaveScreen extends Screen {
                 ).build()
         );
 
+        // Close
         addRenderableWidget(
                 Button.builder(
                         Component.literal("CLOSE"),
@@ -129,14 +137,19 @@ public final class AutoSaveScreen extends Screen {
                 ).build()
         );
 
+        // Menu intervalle
         if (intervalMenuOpen) {
             for (int i = 0; i < INTERVALS.length; i++) {
                 final int index = i;
 
                 addRenderableWidget(
                         Button.builder(
-                                Component.literal(INTERVALS[i].name),
-                                button -> selectInterval(INTERVALS[index])
+                                Component.literal(
+                                        INTERVALS[i].name
+                                ),
+                                button -> selectInterval(
+                                        INTERVALS[index]
+                                )
                         ).bounds(
                                 layout.menuX,
                                 layout.menuY + i * layout.menuOptionHeight,
@@ -212,7 +225,7 @@ public final class AutoSaveScreen extends Screen {
     ) {
         Layout layout = calculateLayout();
 
-        // Jeu visible derrière.
+        // Jeu visible derrière
         graphics.fill(
                 0,
                 0,
@@ -221,7 +234,7 @@ public final class AutoSaveScreen extends Screen {
                 0x7A000000
         );
 
-        // Ombre.
+        // Ombre
         graphics.fill(
                 layout.left + 7,
                 layout.top + 7,
@@ -230,7 +243,7 @@ public final class AutoSaveScreen extends Screen {
                 0x65000000
         );
 
-        // Fenêtre.
+        // Fenêtre
         graphics.fill(
                 layout.left,
                 layout.top,
@@ -239,7 +252,7 @@ public final class AutoSaveScreen extends Screen {
                 0xFF090909
         );
 
-        // Bordure.
+        // Bordure
         graphics.fill(
                 layout.left,
                 layout.top,
@@ -272,7 +285,7 @@ public final class AutoSaveScreen extends Screen {
                 0xFF2C2C2C
         );
 
-        // Header.
+        // Header
         graphics.text(
                 this.font,
                 Component.literal("AS"),
@@ -300,6 +313,7 @@ public final class AutoSaveScreen extends Screen {
                 false
         );
 
+        // Statut global
         int dotX = layout.right - layout.padding - 68;
 
         graphics.fill(
@@ -325,6 +339,7 @@ public final class AutoSaveScreen extends Screen {
                 false
         );
 
+        // Ligne
         graphics.fill(
                 layout.left + layout.padding,
                 layout.headerBottom,
@@ -333,7 +348,7 @@ public final class AutoSaveScreen extends Screen {
                 0xFF202020
         );
 
-        // Automatic backup.
+        // Section Automatic Backup
         graphics.text(
                 this.font,
                 Component.literal("AUTOMATIC BACKUP"),
@@ -363,7 +378,7 @@ public final class AutoSaveScreen extends Screen {
                 false
         );
 
-        // Intervalle.
+        // Intervalle
         graphics.text(
                 this.font,
                 Component.literal("Backup interval"),
@@ -384,7 +399,7 @@ public final class AutoSaveScreen extends Screen {
                 false
         );
 
-        // Location.
+        // Dossier
         graphics.text(
                 this.font,
                 Component.literal("BACKUP LOCATION"),
@@ -431,7 +446,7 @@ public final class AutoSaveScreen extends Screen {
                 false
         );
 
-        // Sauvegardes.
+        // Sauvegardes
         graphics.text(
                 this.font,
                 Component.literal("SAVED BACKUPS"),
@@ -441,7 +456,8 @@ public final class AutoSaveScreen extends Screen {
                 true
         );
 
-        int backupCount = AutoSaveService.listBackups().length;
+        int backupCount =
+                AutoSaveService.listBackups().length;
 
         graphics.text(
                 this.font,
@@ -459,7 +475,7 @@ public final class AutoSaveScreen extends Screen {
                 false
         );
 
-        // Statut.
+        // Statut
         graphics.text(
                 this.font,
                 Component.literal(status),
@@ -469,7 +485,7 @@ public final class AutoSaveScreen extends Screen {
                 false
         );
 
-        // Menu intervalle.
+        // Fond du menu intervalle
         if (intervalMenuOpen) {
             int menuHeight =
                     layout.menuOptionHeight * INTERVALS.length;
@@ -491,7 +507,7 @@ public final class AutoSaveScreen extends Screen {
             );
         }
 
-        // Widgets par-dessus le fond.
+        // Widgets au-dessus du fond
         super.extractRenderState(
                 graphics,
                 mouseX,
@@ -504,6 +520,9 @@ public final class AutoSaveScreen extends Screen {
         int availableWidth = this.width;
         int availableHeight = this.height;
 
+        /*
+         * Responsive pour GUI Scale 3.
+         */
         int windowWidth = clamp(
                 (int) (availableWidth * 0.78),
                 430,
@@ -532,19 +551,25 @@ public final class AutoSaveScreen extends Screen {
         int top =
                 (availableHeight - windowHeight) / 2;
 
-        int padding = Math.max(18, windowWidth / 20);
+        int padding =
+                Math.max(
+                        18,
+                        windowWidth / 20
+                );
 
-        int buttonHeight = clamp(
-                windowHeight / 14,
-                22,
-                28
-        );
+        int buttonHeight =
+                clamp(
+                        windowHeight / 14,
+                        22,
+                        28
+                );
 
-        int controlWidth = clamp(
-                windowWidth / 5,
-                90,
-                125
-        );
+        int controlWidth =
+                clamp(
+                        windowWidth / 5,
+                        90,
+                        125
+                );
 
         int halfButtonWidth =
                 (windowWidth - padding * 2 - 10) / 2;
@@ -594,7 +619,9 @@ public final class AutoSaveScreen extends Screen {
                 backupsTitleY + 19;
 
         int footerY =
-                top + windowHeight - buttonHeight - 18;
+                top + windowHeight
+                        - buttonHeight
+                        - 18;
 
         int statusY =
                 footerY - 22;
@@ -609,7 +636,9 @@ public final class AutoSaveScreen extends Screen {
         int closeWidth = saveWidth;
 
         int closeX =
-                left + windowWidth - padding - closeWidth;
+                left + windowWidth
+                        - padding
+                        - closeWidth;
 
         int saveX =
                 closeX - 8 - saveWidth;
@@ -634,7 +663,9 @@ public final class AutoSaveScreen extends Screen {
                 controlX - 20;
 
         int menuY =
-                intervalY + buttonHeight + 8;
+                intervalY
+                        + buttonHeight
+                        + 8;
 
         int menuOptionHeight = 25;
 
@@ -665,9 +696,6 @@ public final class AutoSaveScreen extends Screen {
                 locationTitleY,
                 pathY,
                 pathY + pathHeight,
-                left + padding,
-                pathY + 10,
-                left + windowWidth - padding,
                 selectFolderX,
                 restoreX,
                 halfButtonWidth,
@@ -684,7 +712,9 @@ public final class AutoSaveScreen extends Screen {
                 menuY,
                 menuWidth,
                 menuOptionHeight,
-                maxPathLength
+                maxPathLength,
+                left + padding + 12,
+                pathY + 10
         );
     }
 
@@ -725,9 +755,6 @@ public final class AutoSaveScreen extends Screen {
             int locationTitleY,
             int pathY,
             int pathBottom,
-            int pathX,
-            int pathTextY,
-            int pathRight,
             int selectFolderX,
             int restoreX,
             int halfButtonWidth,
@@ -744,10 +771,9 @@ public final class AutoSaveScreen extends Screen {
             int menuY,
             int menuWidth,
             int menuOptionHeight,
-            int maxPathLength
+            int maxPathLength,
+            int pathTextX,
+            int pathTextY
     ) {
-        int pathTextX() {
-            return pathX + 12;
-        }
     }
 }
